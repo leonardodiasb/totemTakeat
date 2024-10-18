@@ -1,118 +1,98 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useEffect} from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  NativeModules,
   SafeAreaView,
-  ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
-  useColorScheme,
+  TouchableOpacity,
   View,
 } from 'react-native';
-
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+import WebView from 'react-native-webview';
+import NetInfo, {useNetInfo} from '@react-native-community/netinfo';
+const { ImmersiveMode } = NativeModules;
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const uri = 'https://auto.takeat.app/';
+  const [internet, setInternet] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const netInfo = useNetInfo();
+  useEffect(() => {
+    if (netInfo && netInfo.isConnected) {
+      setInternet(netInfo.isConnected);
+    }
+  }, [netInfo]);
+  const onMessage = payload => {
+    console.log('payload', payload.nativeEvent.data);
   };
-
+  const immersiveMode = () => {
+    ImmersiveMode.enterLeanBackMode();
+    console.log('ImmersiveMode', ImmersiveMode);
+  };
+  useEffect(() => {
+    immersiveMode();
+  }, []);
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
+    <SafeAreaView style={{flex: 1}}>
+      <StatusBar hidden={true} />
+      {!netInfo.isConnected && !internet && (
         <View
           style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
           }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+          <Text>Type: {netInfo.type}</Text>
+          <Text style={{fontSize: 28}}>
+            Dispositivo não conectado a Internet.
+          </Text>
+          <TouchableOpacity
+            disabled={loading}
+            style={{height: 60}}
+            onPress={() => {
+              NetInfo.fetch().then(state => {
+                setLoading(true);
+                setTimeout(() => {
+                  setLoading(false);
+                }, 2000);
+                setInternet(state.isConnected);
+              });
+            }}>
+            <Text
+              style={{
+                fontSize: 20,
+                marginTop: 16,
+                textDecorationLine: 'underline',
+              }}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#666" />
+              ) : (
+                'Tentar conexão'
+              )}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
+      )}
+      {internet && (
+        <WebView
+          // ref={webview => {
+          //   this.webview = webview;
+          // }}
+          onMessage={onMessage}
+          originWhitelist={['*']}
+          javaScriptEnabledAndroid={true}
+          source={{uri: uri}}
+          onError={() => {
+            Alert.alert(
+              'Error',
+              'Algo de errado aconteceu.\n Verifique sua conexão com a internet.',
+            );
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
 
 export default App;
